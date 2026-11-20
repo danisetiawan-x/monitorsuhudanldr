@@ -10,46 +10,148 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 
 <style>
-  :root { --bg:#f4f6f8; --card:#fff; --text:#1c2430; --muted:#6b7785; --on:#16a34a; --off:#c7ced6; --warn:#dc2626; --btn:#0284c7; }
+  :root {
+    --bg:#eef4f8;
+    --card:rgba(255,255,255,.92);
+    --card-border:rgba(148,163,184,.22);
+    --text:#172033;
+    --muted:#718096;
+    --on:#22c55e;
+    --off:#cbd5e1;
+    --warn:#ef4444;
+    --primary:#0369a1;
+    --primary-soft:#e0f2fe;
+    --shadow:0 14px 35px rgba(51,65,85,.10);
+  }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#12161c; --card:#1b212a; --text:#e8edf2; --muted:#93a0ae; --off:#3a4452; }
+    :root {
+      --bg:#0d1420;
+      --card:rgba(25,35,49,.94);
+      --card-border:rgba(148,163,184,.13);
+      --text:#edf4f8;
+      --muted:#9baabd;
+      --off:#4a5968;
+      --primary:#38bdf8;
+      --primary-soft:rgba(56,189,248,.12);
+      --shadow:0 18px 40px rgba(0,0,0,.24);
+    }
   }
   * { box-sizing:border-box; }
-  body { margin:0; padding:16px; background:var(--bg); color:var(--text); font-family:system-ui,sans-serif; }
-  h1 { font-size:1.2rem; margin:0 0 4px; }
-  #koneksi { font-size:.85rem; color:var(--muted); margin-bottom:16px; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; max-width:720px; }
-  .card { background:var(--card); border-radius:12px; padding:16px; }
-  .label { font-size:.8rem; color:var(--muted); }
-  .nilai { font-size:2rem; font-weight:600; margin-top:6px; }
-  .dot { display:inline-block; width:14px; height:14px; border-radius:50%; background:var(--off); margin-right:8px; vertical-align:middle; }
+  body {
+    margin:0;
+    min-height:100vh;
+    padding:24px;
+    background:
+      radial-gradient(circle at top left, rgba(56,189,248,.14), transparent 28rem),
+      radial-gradient(circle at bottom right, rgba(34,197,94,.08), transparent 24rem),
+      var(--bg);
+    color:var(--text);
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  .app { max-width:920px; margin:0 auto; }
+  .header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:18px;
+  }
+  h1 { font-size:clamp(1.15rem,3vw,1.55rem); margin:0; letter-spacing:-.02em; }
+  #koneksi {
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    min-height:34px;
+    margin:0;
+    padding:7px 11px;
+    border:1px solid var(--card-border);
+    border-radius:999px;
+    background:var(--card);
+    color:var(--muted);
+    font-size:.78rem;
+    white-space:nowrap;
+    box-shadow:0 5px 16px rgba(51,65,85,.06);
+  }
+  #koneksi::before {
+    content:"";
+    width:8px;
+    height:8px;
+    flex:0 0 8px;
+    border-radius:50%;
+    background:var(--off);
+  }
+  #koneksi.connected::before { background:var(--on); box-shadow:0 0 0 4px rgba(34,197,94,.12); }
+  #koneksi.warning::before { background:var(--warn); box-shadow:0 0 0 4px rgba(239,68,68,.10); }
+  .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+  .card {
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:18px;
+    padding:18px;
+    box-shadow:var(--shadow);
+    backdrop-filter:blur(12px);
+  }
+  .label { display:flex; align-items:center; gap:7px; font-size:.78rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.055em; }
+  .label::before { content:""; width:6px; height:6px; border-radius:50%; background:#38bdf8; }
+  .nilai { font-size:clamp(1.65rem,5vw,2.35rem); line-height:1.1; font-weight:750; margin-top:12px; letter-spacing:-.04em; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--off); margin-left:auto; vertical-align:middle; box-shadow:0 0 0 5px rgba(148,163,184,.10); }
   .dot.on { background:var(--on); }
   .dot.warn { background:var(--warn); }
-  .status { font-size:1.1rem; margin-top:8px; }
+  .status { display:flex; align-items:center; gap:10px; font-size:1.05rem; font-weight:700; margin-top:14px; }
+  .device-icon { width:34px; height:34px; flex:0 0 34px; color:var(--muted); transition:color .25s ease, filter .25s ease, opacity .25s ease; opacity:.65; }
+  .fan-rotor { transform-box:view-box; transform-origin:24px 24px; }
+  .status.is-on .device-icon { color:var(--on); opacity:1; }
+  .status.is-on .fan-rotor { animation:fan-spin .8s linear infinite; }
+  .status.is-on .lamp-bulb { color:#f59e0b; animation:lamp-glow 1.8s ease-in-out infinite; }
+  @keyframes fan-spin { to { transform:rotate(360deg); } }
+  @keyframes lamp-glow {
+    0%,100% { filter:drop-shadow(0 0 2px rgba(245,158,11,.4)); }
+    50% { filter:drop-shadow(0 0 9px rgba(245,158,11,.9)); }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; }
+  }
 
   /* Style Tambahan untuk Tombol & Mode */
-  .mode-container { margin-bottom: 16px; max-width:720px; }
-  .btn-group { display: flex; gap: 8px; margin-top: 6px; }
+  .mode-container { max-width:none; margin-bottom:14px; }
+  .mode-container .label { margin-bottom:10px; }
+  .btn-group { display:flex; gap:8px; margin-top:8px; }
   button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    background: #3a4452;
-    color: #fff;
-    font-weight: 600;
-    cursor: pointer;
+    min-width:92px;
+    padding:10px 16px;
+    border:1px solid transparent;
+    border-radius:10px;
+    background:var(--primary-soft);
+    color:var(--primary);
+    font-weight:700;
+    cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease, background .18s ease;
   }
-  button.active { background: var(--btn); }
-  button.btn-on { background: var(--on); }
-  button.btn-off { background: var(--warn); }
+  button:hover { transform:translateY(-1px); box-shadow:0 7px 16px rgba(14,165,233,.12); }
+  button.active { background:var(--primary); color:#fff; box-shadow:0 8px 18px rgba(3,105,161,.18); }
+  button.btn-on { background:#16a34a; color:#fff; }
+  button.btn-off { background:#e5484d; color:#fff; }
   
   /* Container Tombol Kontrol Manual (Bisa Disembunyikan) */
-  #panel-manual { display: none; margin-top: 16px; }
+  #panel-manual { display:none; grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:14px; }
+  @media (max-width:680px) {
+    body { padding:14px; }
+    .header { align-items:flex-start; flex-direction:column; gap:10px; }
+    #koneksi { max-width:100%; white-space:normal; }
+    .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .card { border-radius:14px; padding:15px; }
+  }
+  @media (max-width:390px) {
+    .grid { grid-template-columns:1fr; }
+  }
 </style>
 </head>
 <body>
-<h1>Monitoring Suhu &amp; Kelembapan</h1>
-<div id="koneksi">Menyambung ke server...</div>
+<main class="app">
+<header class="header">
+  <h1>Monitoring Suhu &amp; Kelembapan</h1>
+  <div id="koneksi">Menyambung ke server...</div>
+</header>
 
 <!-- Pilihan Mode -->
 <div class="card mode-container">
@@ -64,8 +166,25 @@
   <div class="card"><div class="label">Suhu</div><div class="nilai"><span id="suhu">--</span> °C</div></div>
   <div class="card"><div class="label">Kelembapan</div><div class="nilai"><span id="lembab">--</span> %</div></div>
   <div class="card"><div class="label">Cahaya</div><div class="nilai" id="cahaya" style="font-size:1.5rem">--</div></div>
-  <div class="card"><div class="label">Lampu</div><div class="status"><span class="dot" id="lampu"></span><span id="t-lampu">--</span></div></div>
-  <div class="card"><div class="label">Kipas</div><div class="status"><span class="dot" id="kipas"></span><span id="t-kipas">--</span></div></div>
+  <div class="card"><div class="label">Lampu</div><div class="status">
+    <svg class="device-icon lamp-bulb" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M17 29c-2.5-2-4-5-4-8.5a11 11 0 1 1 22 0c0 3.5-1.5 6.5-4 8.5-1.5 1.2-2 2.5-2 4.5H19c0-2-.5-3.3-2-4.5Z"/>
+      <path d="M19 38h10M21 42h6M24 13v9m-6-5 3 3m9-3-3 3"/>
+    </svg>
+    <span id="t-lampu">--</span><span class="dot" id="lampu"></span>
+  </div></div>
+  <div class="card"><div class="label">Kipas</div><div class="status">
+    <svg class="device-icon" viewBox="0 0 48 48" aria-hidden="true">
+      <g class="fan-rotor" fill="currentColor">
+        <path d="M22.2 21.3C16 14.7 16 8.6 20.5 7.2c4.3-1.3 6.2 3.2 5.3 12.2l-.2 2.3Z"/>
+        <path d="M25.8 22.2c6.6-6.2 12.7-6.2 14.1-1.7 1.3 4.3-3.2 6.2-12.2 5.3l-2.3-.2Z"/>
+        <path d="M25.8 25.8c6.2 6.6 6.2 12.7 1.7 14.1-4.3 1.3-6.2-3.2-5.3-12.2l.2-2.3Z"/>
+        <path d="M22.2 25.8c-6.6 6.2-12.7 6.2-14.1 1.7-1.3-4.3 3.2-6.2 12.2-5.3l2.3.2Z"/>
+      </g>
+      <circle cx="24" cy="24" r="3.2" fill="currentColor"/>
+    </svg>
+    <span id="t-kipas">--</span><span class="dot" id="kipas"></span>
+  </div></div>
   <div class="card"><div class="label">Buzzer</div><div class="status"><span class="dot" id="buzzer"></span><span id="t-buzzer">--</span></div></div>
 </div>
 
@@ -86,6 +205,7 @@
     </div>
   </div>
 </div>
+</main>
 
 <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script>
@@ -101,6 +221,7 @@ const $ = id => document.getElementById(id);
 
 function lampu(id, aktif, warn) {
   $(id).className = "dot" + (aktif ? (warn ? " warn" : " on") : "");
+  $(id).parentElement.classList.toggle("is-on", Boolean(aktif));
   $("t-" + id).textContent = aktif ? "ON" : "OFF";
 }
 
@@ -135,15 +256,20 @@ const client = mqtt.connect("wss://" + HOST + ":" + PORT + "/mqtt", USER ? { use
 
 client.on("connect", () => {
   $("koneksi").textContent = "Server tersambung, menunggu ESP32...";
+  $("koneksi").className = "connected";
   client.subscribe([TOPIK_DATA, TOPIK_STATUS]);
 });
 
-client.on("close", () => { $("koneksi").textContent = "Terputus dari server, mencoba lagi..."; });
+client.on("close", () => {
+  $("koneksi").textContent = "Terputus dari server, mencoba lagi...";
+  $("koneksi").className = "warning";
+});
 
 client.on("message", (topik, pesan) => {
   const isi = pesan.toString();
   if (topik === TOPIK_STATUS) {
     $("koneksi").textContent = isi === "online" ? "ESP32 online" : "ESP32 offline (data di bawah adalah yang terakhir)";
+    $("koneksi").className = isi === "online" ? "connected" : "warning";
     return;
   }
   try {
