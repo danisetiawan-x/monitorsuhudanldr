@@ -134,11 +134,15 @@
   
   /* Container Tombol Kontrol Manual (Bisa Disembunyikan) */
   #panel-manual { display:none; grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:14px; }
+  #panel-manual > .card { min-width:0; }
+  #panel-manual .btn-group { width:100%; }
+  #panel-manual button { flex:1; min-width:0; padding-left:8px; padding-right:8px; }
   @media (max-width:680px) {
     body { padding:14px; }
     .header { align-items:flex-start; flex-direction:column; gap:10px; }
     #koneksi { max-width:100%; white-space:normal; }
     .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    #panel-manual { grid-template-columns:1fr; }
     .card { border-radius:14px; padding:15px; }
   }
   @media (max-width:390px) {
