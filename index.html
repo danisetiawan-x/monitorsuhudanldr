@@ -19,6 +19,8 @@
     --on:#22c55e;
     --off:#cbd5e1;
     --warn:#ef4444;
+    --warn-soft:rgba(239,68,68,.10);
+    --warn-text:#b91c1c;
     --primary:#0369a1;
     --primary-soft:#e0f2fe;
     --shadow:0 14px 35px rgba(51,65,85,.10);
@@ -31,6 +33,8 @@
       --text:#edf4f8;
       --muted:#9baabd;
       --off:#4a5968;
+      --warn-soft:rgba(239,68,68,.16);
+      --warn-text:#fca5a5;
       --primary:#38bdf8;
       --primary-soft:rgba(56,189,248,.12);
       --shadow:0 18px 40px rgba(0,0,0,.24);
@@ -90,6 +94,7 @@
     padding:18px;
     box-shadow:var(--shadow);
     backdrop-filter:blur(12px);
+    transition:border-color .2s ease;
   }
   .label { display:flex; align-items:center; gap:7px; font-size:.78rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.055em; }
   .label::before { content:""; width:6px; height:6px; border-radius:50%; background:#38bdf8; }
@@ -108,6 +113,43 @@
     0%,100% { filter:drop-shadow(0 0 2px rgba(245,158,11,.4)); }
     50% { filter:drop-shadow(0 0 9px rgba(245,158,11,.9)); }
   }
+
+  /* Banner & Status Error Sensor DHT22 */
+  .alert-banner {
+    display:none;
+    align-items:center;
+    gap:10px;
+    margin-bottom:14px;
+    padding:12px 16px;
+    border-radius:14px;
+    border:1px solid rgba(239,68,68,.40);
+    background:var(--warn-soft);
+    color:var(--warn-text);
+    font-size:.88rem;
+    line-height:1.4;
+  }
+  .alert-banner.show { display:flex; }
+  .alert-dot {
+    width:10px;
+    height:10px;
+    flex:0 0 10px;
+    border-radius:50%;
+    background:var(--warn);
+    box-shadow:0 0 0 4px rgba(239,68,68,.20);
+  }
+  .card.is-error { border-color:rgba(239,68,68,.55); }
+  .card.is-error .label::before { background:var(--warn); }
+  .card.is-error .nilai { color:var(--warn); font-size:clamp(1.35rem,4vw,1.8rem); }
+  .card.is-error .unit { display:none; }
+  .sensor-err-text {
+    display:none;
+    margin-top:6px;
+    font-size:.76rem;
+    font-weight:600;
+    color:var(--warn-text);
+  }
+  .card.is-error .sensor-err-text { display:block; }
+
   @media (prefers-reduced-motion:reduce) {
     *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; }
   }
@@ -131,7 +173,7 @@
   button.active { background:var(--primary); color:#fff; box-shadow:0 8px 18px rgba(3,105,161,.18); }
   button.btn-on { background:#16a34a; color:#fff; }
   button.btn-off { background:#e5484d; color:#fff; }
-  
+
   /* Container Tombol Kontrol Manual (Bisa Disembunyikan) */
   #panel-manual { display:none; grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:14px; }
   #panel-manual > .card { min-width:0; }
@@ -153,7 +195,7 @@
 <body>
 <main class="app">
 <header class="header">
-  <h1>Monitoring Suhu &amp; Kelembapan</h1>
+  <h1>Monitoring Suhu & Kelembapan</h1>
   <div id="koneksi">Menyambung ke server...</div>
 </header>
 
@@ -166,9 +208,23 @@
   </div>
 </div>
 
+<!-- Peringatan Error Sensor DHT22 -->
+<div id="dht-alert" class="alert-banner" role="alert">
+  <span class="alert-dot" aria-hidden="true"></span>
+  <div><strong>Error Sensor DHT22:</strong> Suhu & kelembapan tidak terdeteksi. Periksa kabel atau modul sensor pada ESP32.</div>
+</div>
+
 <div class="grid">
-  <div class="card"><div class="label">Suhu</div><div class="nilai"><span id="suhu">--</span> °C</div></div>
-  <div class="card"><div class="label">Kelembapan</div><div class="nilai"><span id="lembab">--</span> %</div></div>
+  <div class="card" id="card-suhu">
+    <div class="label">Suhu</div>
+    <div class="nilai"><span id="suhu">--</span><span class="unit"> °C</span></div>
+    <div class="sensor-err-text">Sensor tidak terdeteksi</div>
+  </div>
+  <div class="card" id="card-lembab">
+    <div class="label">Kelembapan</div>
+    <div class="nilai"><span id="lembab">--</span><span class="unit"> %</span></div>
+    <div class="sensor-err-text">Sensor tidak terdeteksi</div>
+  </div>
   <div class="card"><div class="label">Cahaya</div><div class="nilai" id="cahaya" style="font-size:1.5rem">--</div></div>
   <div class="card"><div class="label">Lampu</div><div class="status">
     <svg class="device-icon lamp-bulb" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -219,9 +275,12 @@ const USER = "WEB_MONITORING";
 const PASS = "monitor123";
 const TOPIK_DATA    = "DANI-x7k2/monitoring/data";
 const TOPIK_STATUS  = "DANI-x7k2/monitoring/status";
-const TOPIK_KONTROL = "DANI-x7k2/monitoring/kontrol"; // Topik untuk kirim perintah
+const TOPIK_KONTROL = "DANI-x7k2/monitoring/kontrol";
 
 const $ = id => document.getElementById(id);
+
+let modeTarget = null;
+let batasTungguMode = 0;
 
 function lampu(id, aktif, warn) {
   $(id).className = "dot" + (aktif ? (warn ? " warn" : " on") : "");
@@ -229,19 +288,30 @@ function lampu(id, aktif, warn) {
   $("t-" + id).textContent = aktif ? "ON" : "OFF";
 }
 
-// Fungsi Mengatur Tampilan Tombol Mode
-function setMode(mode) {
-  if (mode === 'otomatis') {
-    $("btn-auto").classList.add("active");
-    $("btn-manual").classList.remove("active");
-    $("panel-manual").style.display = "none"; // Sembunyikan tombol ON/OFF
-  } else {
-    $("btn-manual").classList.add("active");
-    $("btn-auto").classList.remove("active");
-    $("panel-manual").style.display = "grid"; // Tampilkan tombol ON/OFF
+function setDhtError(isError) {
+  $("dht-alert").classList.toggle("show", isError);
+  $("card-suhu").classList.toggle("is-error", isError);
+  $("card-lembab").classList.toggle("is-error", isError);
+  if (isError) {
+    $("suhu").textContent = "ERROR";
+    $("lembab").textContent = "ERROR";
   }
-  
-  // Kirim status mode ke MQTT
+}
+
+// Perbarui tampilan tombol & panel manual tanpa mengirim ulang ke MQTT
+function tampilkanMode(mode) {
+  const isAuto = mode === "otomatis";
+  $("btn-auto").classList.toggle("active", isAuto);
+  $("btn-manual").classList.toggle("active", !isAuto);
+  $("panel-manual").style.display = isAuto ? "none" : "grid";
+}
+
+// Dipanggil saat pengguna menekan tombol Otomatis / Manual
+function setMode(mode) {
+  modeTarget = mode;
+  batasTungguMode = Date.now() + 1500; // Cegah tombol berkedip jika bentrok dengan data periodik lama
+  tampilkanMode(mode);
+
   if (client && client.connected) {
     client.publish(TOPIK_KONTROL, JSON.stringify({ mode: mode }));
   }
@@ -250,7 +320,6 @@ function setMode(mode) {
 // Fungsi Kirim Perintah ON/OFF
 function kirimKontrol(perangkat, nilai) {
   if (client && client.connected) {
-    // Mengirim JSON, misal: {"lampu": 1} atau {"kipas": 0}
     const payload = JSON.stringify({ [perangkat]: nilai });
     client.publish(TOPIK_KONTROL, payload);
   }
@@ -278,8 +347,26 @@ client.on("message", (topik, pesan) => {
   }
   try {
     const d = JSON.parse(isi);
-    $("suhu").textContent = d.suhu.toFixed(1);
-    $("lembab").textContent = d.lembab.toFixed(1);
+
+    // Sinkronisasi otomatis tombol mode dari data ESP32
+    if (d.mode === "otomatis" || d.mode === "manual") {
+      if (modeTarget) {
+        if (d.mode === modeTarget || Date.now() > batasTungguMode) {
+          modeTarget = null;
+          tampilkanMode(d.mode);
+        }
+      } else {
+        tampilkanMode(d.mode);
+      }
+    }
+
+    const dhtErr = Boolean(d.dhtError) || typeof d.suhu !== "number" || typeof d.lembab !== "number";
+    setDhtError(dhtErr);
+    if (!dhtErr) {
+      $("suhu").textContent = d.suhu.toFixed(1);
+      $("lembab").textContent = d.lembab.toFixed(1);
+    }
+
     $("cahaya").textContent = d.gelap ? "Gelap" : "Terang";
     lampu("lampu", d.lampu);
     lampu("kipas", d.kipas);
